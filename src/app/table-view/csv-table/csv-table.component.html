@@ -1,0 +1,25 @@
+<div class="preview-section">
+  <h2 class="preview-title">File Preview</h2>
+  <div class="table-container">
+    <table class="responsive-table">
+      <thead>
+        <tr>
+          <th *ngFor="let header of headers">{{ header }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let row of data"
+          [ngStyle]="{
+            'background-color': headers.includes('Validation') && row['Validation'] === 'No Error' ? '#d4edda' :
+                               headers.includes('Validation') && row['Validation'] !== 'No Error' ? '#f8d7da' : 'white'
+          }"
+        >
+          <td *ngFor="let header of headers">
+            {{ row[header] }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

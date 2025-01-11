@@ -3,10 +3,12 @@ import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { CsvTableComponent } from './table-view/csv-table/csv-table.component';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    CsvTableComponent
   ],
   imports: [
     BrowserModule,
