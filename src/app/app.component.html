@@ -34,9 +34,9 @@
               <h4>{{ selectedFile.name }}</h4>
               <p>{{ (selectedFile.size / 1024).toFixed(2) }} KB</p>
             </div>
-            <button class="remove-btn" (click)="resetAll()">
+            <!-- <button class="remove-btn" (click)="resetAll()">
               <i class="fas fa-times"></i>
-            </button>
+            </button> -->
           </div>
           <div class="button-group">
             <button
@@ -48,7 +48,7 @@
             <button
               class="reset-btn"
               (click)="resetAll()">
-              Reset All
+              Reset File
             </button>
           </div>
         </div>

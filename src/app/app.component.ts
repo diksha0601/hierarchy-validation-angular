@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CsvHandlerService } from './services/csv-handler.service';
+import { CsvHandlerService } from './services/csv-handler/csv-handler.service';
 
 @Component({
   selector: 'app-root',
@@ -100,7 +100,6 @@ export class AppComponent {
       (result) => {
         this.csvHeaders = result.headers;
         this.csvData = result.data;
-        console.log('CSV Data: ', result);
       },
       (error) => {
         this.errorMessage = error;
