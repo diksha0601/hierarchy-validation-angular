@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { RuleValidationService } from '../rule-validation.service';
+import { RunLogicReponse, TransformedRow } from 'src/app/model';
 
 @Injectable({
   providedIn: 'root',
@@ -53,13 +54,14 @@ export class CsvHandlerService {
               return row;
             });
 
-            const transformedData = this.ruleValidationService.transformExcelData(data);
-            const logicResult: string[] = this.ruleValidationService.runLogic(transformedData);
+            const transformedData: TransformedRow[] = this.ruleValidationService.transformExcelData(data);
+            const logicResult: RunLogicReponse = this.ruleValidationService.runLogic(transformedData);
 
-            const logicResultLength = logicResult.length;
+            const { detectCycle, errors } = logicResult;
+            const logicResultLength = errors.length;
             for(let i = 0; i < data.length; i++) {
               data[i]['SNo'] = i + 1;
-              data[i]['Validation'] = i < logicResultLength ?  logicResult[i] : 'Error Occured';
+              data[i]['Validation'] = (detectCycle) ? 'Cyclic is detected in Hierarchy!' : i < logicResultLength ?  errors[i] : 'Error Occured';
             }
           resolve({ headers, data });
         } catch (error) {
