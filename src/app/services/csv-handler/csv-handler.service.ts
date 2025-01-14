@@ -61,7 +61,7 @@ export class CsvHandlerService {
             const logicResultLength = errors.length;
             for(let i = 0; i < data.length; i++) {
               data[i]['SNo'] = i + 1;
-              data[i]['Validation'] = (detectCycle) ? 'Cyclic is detected in Hierarchy!' : i < logicResultLength ?  errors[i] : 'Error Occured';
+              data[i]['Validation'] = i < logicResultLength ?  errors[i] : 'Error Occured';
             }
           resolve({ headers, data });
         } catch (error) {

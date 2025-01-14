@@ -38,6 +38,8 @@ export const ERROR_MESSAGES = {
     `Row ${rowNumber}: No rule is defined for the role: ${role}.`,
   MULTIPLE_REPORTING: (rowNumber: number, role: string, userEmail: string, userName: string, reporteeEmails: string) =>
     `Row ${rowNumber} (${userEmail}): ${userName} is a ${role} who reports to multiple emails: ${reporteeEmails}`,
+  CYCLE_ERROR: (rowNumber: number, userEmail: string) =>
+    `Row ${rowNumber} (${userEmail}) is a part of cycle in hierarchy!`,
 };
 
 
