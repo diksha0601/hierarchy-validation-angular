@@ -6,7 +6,7 @@ import { ExcelRow, Rule, RunLogicReponse, TransformedRow } from '../model';
   providedIn: 'root',
 })
 export class RuleValidationService {
-  constructor() { }
+  constructor() {}
 
   private passRule(excelRow: TransformedRow, rule: Rule, rowNumber: number): string[] {
     const errors: string[] = [];
@@ -15,36 +15,54 @@ export class RuleValidationService {
       return errors; // Skip rule if not applicable for this row
     }
 
-    // Validate if the current role can have multiple users
     if (!rule.canMultiple && excelRow.count > 1) {
-      errors.push(ERROR_MESSAGES.MULTIPLE_INSTANCE_ERROR(rowNumber, excelRow.role,));
+      errors.push(ERROR_MESSAGES.MULTIPLE_INSTANCE_ERROR(rowNumber, excelRow.role));
     }
 
     if (excelRow.reportToEmailList.length > 1) {
-      errors.push(ERROR_MESSAGES.MULTIPLE_REPORTING(rowNumber, excelRow.role, excelRow.email, excelRow.name, excelRow.reportToEmailList.join(', ')));
+      errors.push(
+        ERROR_MESSAGES.MULTIPLE_REPORTING(
+          rowNumber,
+          excelRow.role,
+          excelRow.email,
+          excelRow.name,
+          excelRow.reportToEmailList.join(', ')
+        )
+      );
     }
 
     for (let i = 0; i < excelRow.reportsToRoleList.length; i++) {
       const reportToRole: string = excelRow.reportsToRoleList[i] ?? '';
       const reportToEmail = excelRow.reportToEmailList[i];
       if (reportToRole !== '' && !rule.canReportTo.includes(reportToRole)) {
-        errors.push(ERROR_MESSAGES.INVALID_REPORT_TO(rowNumber, excelRow.role, reportToRole, excelRow.email, excelRow.name, reportToEmail));
+        errors.push(
+          ERROR_MESSAGES.INVALID_REPORT_TO(
+            rowNumber,
+            excelRow.role,
+            reportToRole,
+            excelRow.email,
+            excelRow.name,
+            reportToEmail
+          )
+        );
       }
     }
 
     return errors;
   }
 
-  checkCyclicDependency(graph: Map<string, string[]>): boolean {
+  checkCyclicDependency(graph: Map<string, string[]>): string[] {
     const visited = new Set<string>();
     const recursionStack = new Set<string>();
+    const cycleNodes = new Set<string>();
 
     const dfs = (node: string): boolean => {
       if (recursionStack.has(node)) {
+        cycleNodes.add(node);
         return true;
       }
       if (visited.has(node)) {
-        return false; 
+        return false;
       }
 
       visited.add(node);
@@ -52,6 +70,7 @@ export class RuleValidationService {
 
       for (const neighbor of graph.get(node) || []) {
         if (dfs(neighbor)) {
+          cycleNodes.add(node);
           return true;
         }
       }
@@ -62,12 +81,11 @@ export class RuleValidationService {
 
     for (const node of graph.keys()) {
       if (!visited.has(node)) {
-        if (dfs(node)) {
-          return true;
-        }
+        dfs(node);
       }
     }
-    return false;
+
+    return Array.from(cycleNodes);
   }
 
   buildGraph(excelRows: TransformedRow[]): Map<string, string[]> {
@@ -87,19 +105,11 @@ export class RuleValidationService {
     return graph;
   }
 
-
   runLogic(excelRows: TransformedRow[]): RunLogicReponse {
-    const returnedErrors: string[] = [];   
+    const returnedErrors: string[] = [];
     const graph = this.buildGraph(excelRows);
 
-    // Check for cycles in the graph
-    if (this.checkCyclicDependency(graph)) {
-      return {
-        detectCycle: true,
-        errors: ["Cycle is detected in hierarchy"]
-      };
-    }
-
+    const cycleNodes = this.checkCyclicDependency(graph);
     excelRows.forEach((row, index) => {
       const errors: string[] = [];
       const rowNumber = index + 1;
@@ -107,21 +117,25 @@ export class RuleValidationService {
 
       if (!rule) {
         errors.push(ERROR_MESSAGES.UNDEFINED_RULE(rowNumber, row.role));
-        return;
+      } else {
+        const validationErrors = this.passRule(row, rule, rowNumber);
+        errors.push(...validationErrors);
       }
 
-      const validationErrors = this.passRule(row, rule, rowNumber);
+      if (cycleNodes.includes(row.email)) {
+        errors.push(ERROR_MESSAGES.CYCLE_ERROR(rowNumber, row.email));
+      }
 
-      if (validationErrors.length > 0) {
-        returnedErrors.push(validationErrors.join(','));
+      if (errors.length > 0) {
+        returnedErrors.push(errors.join(', '));
       } else {
-        returnedErrors.push('No Error')
+        returnedErrors.push('No Error');
       }
     });
 
     return {
-      detectCycle: false,
-      errors: returnedErrors
+      detectCycle: cycleNodes.length > 0,
+      errors: returnedErrors,
     };
   }
 
@@ -140,7 +154,7 @@ export class RuleValidationService {
         role: row.Role,
         reportToEmailList,
         reportsToRoleList,
-        count: 1, // Assuming each row represents one instance
+        count: 1,
       };
     });
   }
