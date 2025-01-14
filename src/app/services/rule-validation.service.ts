@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
-import { ROLES, RULES, ERROR_MESSAGES } from './role-validation.constant';
+import { RULES, ERROR_MESSAGES } from './role-validation.constant';
+import { ExcelRow, Rule, RunLogicReponse, TransformedRow } from '../model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RuleValidationService {
-  constructor() {}
+  constructor() { }
 
-  // Validates a single row based on rules
-  private passRule(excelRow: any, rule: any, rowNumber: number): string[] {
+  private passRule(excelRow: TransformedRow, rule: Rule, rowNumber: number): string[] {
     const errors: string[] = [];
 
     if (excelRow.role !== rule.role) {
@@ -24,8 +24,8 @@ export class RuleValidationService {
       errors.push(ERROR_MESSAGES.MULTIPLE_REPORTING(rowNumber, excelRow.role, excelRow.email, excelRow.name, excelRow.reportToEmailList.join(', ')));
     }
 
-    for(let i = 0; i < excelRow.reportsToRoleList.length; i++) {
-      const reportToRole = excelRow.reportsToRoleList[i];
+    for (let i = 0; i < excelRow.reportsToRoleList.length; i++) {
+      const reportToRole: string = excelRow.reportsToRoleList[i] ?? '';
       const reportToEmail = excelRow.reportToEmailList[i];
       if (reportToRole !== '' && !rule.canReportTo.includes(reportToRole)) {
         errors.push(ERROR_MESSAGES.INVALID_REPORT_TO(rowNumber, excelRow.role, reportToRole, excelRow.email, excelRow.name, reportToEmail));
@@ -35,9 +35,70 @@ export class RuleValidationService {
     return errors;
   }
 
-  // Main logic to validate all rows
-  runLogic(excelRows: any[]): string[] {
-    const returnedErrors: string[] = [];
+  checkCyclicDependency(graph: Map<string, string[]>): boolean {
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    const dfs = (node: string): boolean => {
+      if (recursionStack.has(node)) {
+        return true;
+      }
+      if (visited.has(node)) {
+        return false; 
+      }
+
+      visited.add(node);
+      recursionStack.add(node);
+
+      for (const neighbor of graph.get(node) || []) {
+        if (dfs(neighbor)) {
+          return true;
+        }
+      }
+
+      recursionStack.delete(node);
+      return false;
+    };
+
+    for (const node of graph.keys()) {
+      if (!visited.has(node)) {
+        if (dfs(node)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  buildGraph(excelRows: TransformedRow[]): Map<string, string[]> {
+    const graph = new Map<string, string[]>();
+    excelRows.forEach((row) => {
+      const fromNode = row.email;
+      row.reportToEmailList
+        .filter((toNode) => toNode !== null)
+        .forEach((toNode) => {
+          if (!graph.has(fromNode)) {
+            graph.set(fromNode, []);
+          }
+          graph.get(fromNode)!.push(toNode!);
+        });
+    });
+
+    return graph;
+  }
+
+
+  runLogic(excelRows: TransformedRow[]): RunLogicReponse {
+    const returnedErrors: string[] = [];   
+    const graph = this.buildGraph(excelRows);
+
+    // Check for cycles in the graph
+    if (this.checkCyclicDependency(graph)) {
+      return {
+        detectCycle: true,
+        errors: ["Cycle is detected in hierarchy"]
+      };
+    }
 
     excelRows.forEach((row, index) => {
       const errors: string[] = [];
@@ -58,14 +119,16 @@ export class RuleValidationService {
       }
     });
 
-    return returnedErrors;
+    return {
+      detectCycle: false,
+      errors: returnedErrors
+    };
   }
 
-  // Transforms Excel data into a standardized format
-  transformExcelData(excelData: any[]): any[] {
+  transformExcelData(excelData: ExcelRow[]): TransformedRow[] {
     return excelData.map((row, index) => {
-      const reportToEmailList = row.ReportsTo.split(';').filter((email: string) => email.trim() !== '');
-      const reportsToRoleList: string[] = reportToEmailList.map((email: string) => {
+      const reportToEmailList = row.ReportsTo.split(';').filter((email) => email.trim() !== '');
+      const reportsToRoleList: (string | null)[] = reportToEmailList.map((email) => {
         const parent = excelData.find((parentRow) => parentRow.Email === email.trim());
         return parent ? parent.Role : null;
       });

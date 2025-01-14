@@ -1,11 +1,6 @@
-export const ROLES = {
-  ROOT: 'Root',
-  ADMIN: 'Admin',
-  MANAGER: 'Manager',
-  CALLER: 'Caller',
-};
+import { ROLES, Rule } from "../model";
 
-export const RULES = [
+export const RULES: Readonly<Rule[]> = [
   {
     role: ROLES.ROOT,
     canMultiple: false,
@@ -35,7 +30,7 @@ export const RULES = [
 export const ERROR_MESSAGES = {
   MULTIPLE_INSTANCE_ERROR: (rowNumber: number, role: string) =>
     `Row ${rowNumber}: ${role} cannot have multiple instances as 'canMultiple' is set to false.`,
-  INVALID_REPORT_TO: (rowNumber: number, role: string, reportsToRole: string, userEmail: string, fullName: string, reporteeEmail: string) =>
+  INVALID_REPORT_TO: (rowNumber: number, role: string, reportsToRole: string | null, userEmail: string, fullName: string, reporteeEmail: string | null) =>
     `Row ${rowNumber} (${userEmail}): ${fullName} is a ${role} but report to ${reporteeEmail} (a ${reportsToRole}).`,
   INVALID_REPORTEES: (rowNumber: number, role: string, invalidReportee: string) =>
     `Row ${rowNumber}: ${role} cannot have ${invalidReportee} as a reportee. This violates the 'reportee' rule.`,
